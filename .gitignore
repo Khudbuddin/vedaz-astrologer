@@ -1,0 +1,16 @@
+.venv-wsl/
+.abc/
+__pycache__/
+*.pyc
+
+outputs/logs/
+outputs/lora_adapter/
+outputs/sample_outputs.txt
+
+*.safetensors
+*.bin
+*.pt
+*.pth
+
+.cache/
+*.log
