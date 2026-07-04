@@ -1,8 +1,8 @@
 """
 inference_test.py
 
-Loads the base Qwen2.5-3B-Instruct model + your trained LoRA adapter,
-then runs test prompts to prove the fine-tune worked.
+Loads the base Qwen2.5-3B-Instruct model (4-bit, same quantization as training)
++ your trained LoRA adapter, then runs test prompts to prove the fine-tune worked.
 Saves outputs to outputs/sample_outputs.txt for your submission.
 
 Run: python Scripts/inference_test.py
@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import PeftModel
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -29,11 +29,20 @@ TEST_PROMPTS = [
     "Meri shaadi kab hogi? Bata do please.",
 ]
 
+# Same 4-bit config as train_lora.py, so inference fits on the same 6GB GPU
+# without relying on device_map="auto" offloading.
+bnb_config = BitsAndBytesConfig(
+    load_in_4bit=True,
+    bnb_4bit_quant_type="nf4",
+    bnb_4bit_compute_dtype=torch.bfloat16,
+    bnb_4bit_use_double_quant=True,
+)
+
 tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 base_model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
-    torch_dtype=torch.bfloat16,
-    device_map="auto",
+    quantization_config=bnb_config,
+    device_map={"": 0},
 )
 model = PeftModel.from_pretrained(base_model, ADAPTER_PATH)
 model.eval()
