@@ -1,35 +1,30 @@
 """
 prepare_data.py
 
-Merges:
-  - data/raw/Chat_Data_for_assessment_of_applicants.json  (the original 55 examples,
-    stored as multiple concatenated JSON objects, NOT a clean array/JSONL)
-  - data/new_chats/vedaz_5_chats.jsonl                     (your 5 new examples)
+Uses ONLY the original 55-example dataset (no additional chats mixed in).
 
-Outputs:
-  - data/processed/train_dataset.jsonl   (one clean JSON object per line,
-    each with a "messages" key - ready for the trainer)
+Input:
+  - data/raw/Chat_Data_for_assessment_of_applicants.json (concatenated JSON objects,
+    not a valid array/JSONL - handled by load_concatenated_json_objects below)
 
-Run: python scripts/prepare_data.py
+Output:
+  - data/processed/train_dataset.jsonl
+
+Run: python Scripts/prepare_data.py
 """
 
 import json
 import os
+from pathlib import Path
 
-RAW_PATH = os.path.join("data", "raw", "Chat_Data_for_assessment_of_applicants.json")
-NEW_CHATS_PATH = os.path.join("data", "new_chats", "vedaz_5_chats.jsonl")
-OUT_PATH = os.path.join("data", "processed", "train_dataset.jsonl")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+RAW_PATH = str(PROJECT_ROOT / "data" / "raw" / "Chat_Data_for_assessment_of_applicants.json")
+OUT_PATH = str(PROJECT_ROOT / "data" / "processed" / "train_dataset.jsonl")
 
 
 def load_concatenated_json_objects(path):
-    """
-    The original file is NOT a valid JSON array - it's multiple {...} objects
-    concatenated with commas/newlines between them (no wrapping brackets).
-    This walks through the raw text and pulls out each object one by one.
-    """
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
-
     decoder = json.JSONDecoder()
     idx, n = 0, len(content)
     records = []
@@ -44,41 +39,25 @@ def load_concatenated_json_objects(path):
     return records
 
 
-def load_jsonl(path):
-    records = []
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                records.append(json.loads(line))
-    return records
-
-
-def validate(record, source):
-    """Basic sanity check on each record before it goes into training data."""
+def validate(record):
     if "messages" not in record:
-        raise ValueError(f"Missing 'messages' key in a record from {source}")
+        raise ValueError("Missing 'messages' key in a record")
     roles = [m.get("role") for m in record["messages"]]
     if "user" not in roles or "assistant" not in roles:
-        raise ValueError(f"Record from {source} missing user/assistant turn: {roles}")
+        raise ValueError(f"Record missing user/assistant turn: {roles}")
 
 
 def main():
-    original = load_concatenated_json_objects(RAW_PATH)
-    new_chats = load_jsonl(NEW_CHATS_PATH)
-
-    all_records = original + new_chats
-    for r in all_records:
-        validate(r, "dataset")
+    records = load_concatenated_json_objects(RAW_PATH)
+    for r in records:
+        validate(r)
 
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as f:
-        for r in all_records:
+        for r in records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-    print(f"Original examples: {len(original)}")
-    print(f"New examples:      {len(new_chats)}")
-    print(f"Total written:     {len(all_records)} -> {OUT_PATH}")
+    print(f"Total examples: {len(records)} -> {OUT_PATH}")
 
 
 if __name__ == "__main__":

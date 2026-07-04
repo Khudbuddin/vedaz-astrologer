@@ -1,21 +1,26 @@
 """
 inference_test.py
 
-Loads the base Qwen2.5-1.5B-Instruct model + your trained LoRA adapter,
-then runs a few test prompts to prove the fine-tune worked.
+Loads the base Qwen2.5-3B-Instruct model + your trained LoRA adapter,
+then runs test prompts to prove the fine-tune worked.
 Saves outputs to outputs/sample_outputs.txt for your submission.
 
-Run: python scripts/inference_test.py
+Run: python Scripts/inference_test.py
 """
 
 import os
+from pathlib import Path
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
-MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
-ADAPTER_PATH = os.path.join("outputs", "lora_adapter")
-OUT_FILE = os.path.join("outputs", "sample_outputs.txt")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+print(f"Using project root: {PROJECT_ROOT}")
+
+MODEL_NAME = "Qwen/Qwen2.5-3B-Instruct"
+ADAPTER_PATH = str(PROJECT_ROOT / "outputs" / "lora_adapter")
+OUT_FILE = str(PROJECT_ROOT / "outputs" / "sample_outputs.txt")
 
 TEST_PROMPTS = [
     "Mera career bahut slow chal raha hai, kya achhe din aayenge?",
@@ -24,7 +29,7 @@ TEST_PROMPTS = [
     "Meri shaadi kab hogi? Bata do please.",
 ]
 
-tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)  # load from base model (has full tokenizer files)
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
 base_model = AutoModelForCausalLM.from_pretrained(
     MODEL_NAME,
     torch_dtype=torch.bfloat16,
@@ -59,7 +64,7 @@ for prompt in TEST_PROMPTS:
     print(f"\nPROMPT: {prompt}\nRESPONSE: {response}\n{'-'*60}")
     results.append(f"PROMPT: {prompt}\nRESPONSE: {response}\n{'-'*60}")
 
-os.makedirs("outputs", exist_ok=True)
+os.makedirs(os.path.dirname(OUT_FILE), exist_ok=True)
 with open(OUT_FILE, "w", encoding="utf-8") as f:
     f.write("\n".join(results))
 
